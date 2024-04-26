@@ -11,11 +11,11 @@ import java.util.logging.Logger;
 
 public class HTTPRequestParser {
     private static final Logger logger = Logger.getLogger(HTTPRequestParser.class.getName());
-    private  SocketChannel channel;
+    private final SocketChannel channel;
     private  String method;
 
     private  String uri;
-    private  Map<String, String> headers;
+    private final Map<String, String> headers;
     private  String body;
 
     public HTTPRequestParser(SocketChannel channel){
