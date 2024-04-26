@@ -19,6 +19,7 @@ public class Client extends Thread{
         this.filePath = filePath;
     }
 
+
     @Override
     public void run(){
         try (SocketChannel socketChannel = SocketChannel.open()){

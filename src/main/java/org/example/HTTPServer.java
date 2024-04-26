@@ -12,7 +12,6 @@ public class HTTPServer extends Thread{
     private final String SERVER_ADDR;
     private static final Logger logger = Logger.getLogger(Client.class.getName());
 
-
     public HTTPServer(int PORT, String SERVER_ADDR ) {
         this.PORT = PORT;
         this.SERVER_ADDR = SERVER_ADDR;

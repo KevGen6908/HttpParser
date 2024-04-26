@@ -4,7 +4,6 @@ import java.io.IOException;
 
 public class Main {
     public static void main(String[] args) throws IOException {
-
         HTTPServer server = new HTTPServer(9000, "localhost");
         Client client = new Client("src/main/java/org/example/HTTPRequest.txt");
 
