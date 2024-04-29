@@ -8,6 +8,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class HTTPResponseSender {
+
     private static final Logger logger = Logger.getLogger(HTTPResponseSender.class.getName());
 
     public static void sendResponse(SocketChannel socketChannel, String method, String responseBody){

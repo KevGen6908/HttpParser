@@ -13,7 +13,6 @@ public class HTTPRequestParser {
     private static final Logger logger = Logger.getLogger(HTTPRequestParser.class.getName());
     private final SocketChannel channel;
     private  String method;
-
     private  String uri;
     private final Map<String, String> headers;
     private  String body;
