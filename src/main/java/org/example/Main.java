@@ -5,7 +5,7 @@ import java.io.IOException;
 public class Main {
     private static final int PORT = 9000;
     private static final String SERVER_ADDR = "localhost";
-    private static final String REQUEST_FILE_PATH = "src/main/java/org/example/HTTPRequest.txt";
+    private static final String REQUEST_FILE_PATH = "src/main/resources/HTTPRequest.txt";
 
     public static void main(String[] args) {
         try {
@@ -27,8 +27,6 @@ public class Main {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-
-        return;
     }
 
 }

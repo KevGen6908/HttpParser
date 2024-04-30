@@ -4,8 +4,6 @@ import java.io.*;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -14,7 +12,6 @@ public class Client {
     private static final int PORT = 9000;
     private static final String SERVER_ADDR = "localhost";
     private final String filePath;
-    private final Lock fileLock = new ReentrantLock();
     private final Object socketLock = new Object();
 
     public Client(String filePath) {
@@ -32,7 +29,7 @@ public class Client {
             sendRequest(socketChannel, httpRequest);
 
             logger.info("HTTP request sent to server " +  Thread.currentThread().getName());
-            receiveResponse();
+            String response = receiveResponse(socketChannel);
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Error occurred while connecting to server " +  Thread.currentThread().getName(), e);
         }
@@ -40,12 +37,12 @@ public class Client {
 
     private void sendRequest(SocketChannel socketChannel, String request) throws IOException {
         ByteBuffer buffer = ByteBuffer.wrap(request.getBytes());
-        synchronized (socketLock) {
-            while (buffer.hasRemaining()) {
-                socketChannel.write(buffer);
-            }
-            socketChannel.shutdownOutput();
+
+        while (buffer.hasRemaining()) {
+            socketChannel.write(buffer);
         }
+        socketChannel.shutdownOutput();
+
     }
 
     private String readRequestFromFile(String filePath) throws IOException {
@@ -59,32 +56,38 @@ public class Client {
         return requestBuilder.toString();
     }
 
-    public void receiveResponse() throws IOException {
-        try (SocketChannel socketChannel = SocketChannel.open()) {
-            socketChannel.connect(new InetSocketAddress(SERVER_ADDR, PORT));
-
+    public String receiveResponse(SocketChannel channel) throws IOException {
+        try {
             ByteBuffer buffer = ByteBuffer.allocate(1024);
             StringBuilder responseBuilder = new StringBuilder();
 
-            System.out.println("Waiting for response. Thread " +  Thread.currentThread().getName());
-            System.out.println("socket contents " + socketChannel.read(buffer));
+            logger.info("Waiting for response. Thread " + Thread.currentThread().getName());
+            while (true) {
+                int bytesRead = channel.read(buffer);
+                if (bytesRead == -1) {
+                    System.out.println("Socket channel closed. No response received.");
+                    break;
+                }
 
-            while (socketChannel.read(buffer) > 0) {
+                logger.info("Response received. Reading response from server.");
+
                 buffer.flip();
                 while (buffer.hasRemaining()) {
                     char c = (char) buffer.get();
                     responseBuilder.append(c);
                 }
                 buffer.clear();
+
+                logger.info("A response was received from the server:");
+                System.out.println(responseBuilder.toString());
+                responseBuilder.setLength(0);
             }
 
-            System.out.println("A response was received from the server: " + responseBuilder.toString());
-
-            logger.info("Received response from server. " + Thread.currentThread().getName());
+            channel.close();
+            return responseBuilder.toString();
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Error occurred while receiving response from server", e);
             throw e;
         }
     }
-
 }

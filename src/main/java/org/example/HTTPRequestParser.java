@@ -72,10 +72,6 @@ public class HTTPRequestParser {
         return uri;
     }
 
-    public Map<String, String> getHeaders() {
-        return headers;
-    }
-
     public String getBody() {
         return body;
     }
