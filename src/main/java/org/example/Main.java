@@ -17,6 +17,7 @@ public class Main {
                     e.printStackTrace();
                 }
             });
+
             serverThread.start();
 
             Thread.sleep(1000);

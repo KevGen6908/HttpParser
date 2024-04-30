@@ -56,7 +56,6 @@ public class HTTPRequestParser {
         }
 
         logger.info("HTTP request parsed successfully");
-
         logger.info("Method: " + method);
         logger.info("URI: " + uri);
         logger.info("Headers: " + headers);

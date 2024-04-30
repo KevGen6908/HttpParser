@@ -108,7 +108,6 @@ class HTTPServer {
             }
 
             //channel.shutdownOutput();
-
             logger.info("Server sent response and closed socket");
 
         } catch (IOException e) {

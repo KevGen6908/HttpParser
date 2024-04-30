@@ -12,7 +12,6 @@ public class Client {
     private static final int PORT = 9000;
     private static final String SERVER_ADDR = "localhost";
     private final String filePath;
-    private final Object socketLock = new Object();
 
     public Client(String filePath) {
         this.filePath = filePath;
