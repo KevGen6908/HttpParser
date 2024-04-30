@@ -1,5 +1,6 @@
-DELETE /resource/123 HTTP/1.1
+POST /api/users HTTP/1.1
 Host: example.com
-User-Agent: Mozilla/5.0
-Accept: */*
-Connection: close
+Content-Type: application/json
+Content-Length: 25
+
+{"username": "john_doe", "password": "secretpassword"}

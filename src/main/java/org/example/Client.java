@@ -15,6 +15,7 @@ public class Client {
     private static final String SERVER_ADDR = "localhost";
     private final String filePath;
     private final Lock fileLock = new ReentrantLock();
+    private final Object socketLock = new Object();
 
     public Client(String filePath) {
         this.filePath = filePath;
@@ -24,23 +25,26 @@ public class Client {
     public void startClient(){
         try (SocketChannel socketChannel = SocketChannel.open()){
             socketChannel.connect(new InetSocketAddress(SERVER_ADDR, PORT));
-            logger.info("Connect to server");
+            logger.info("Connect to server " +  Thread.currentThread().getName());
 
             String httpRequest = readRequestFromFile(filePath);
 
             sendRequest(socketChannel, httpRequest);
 
-            logger.info("HTTP request sent to server");
-            receiveResponse(socketChannel);
+            logger.info("HTTP request sent to server " +  Thread.currentThread().getName());
+            receiveResponse();
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Error occurred while connecting to server", e);
+            logger.log(Level.SEVERE, "Error occurred while connecting to server " +  Thread.currentThread().getName(), e);
         }
     }
 
     private void sendRequest(SocketChannel socketChannel, String request) throws IOException {
         ByteBuffer buffer = ByteBuffer.wrap(request.getBytes());
-        while (buffer.hasRemaining()) {
-            socketChannel.write(buffer);
+        synchronized (socketLock) {
+            while (buffer.hasRemaining()) {
+                socketChannel.write(buffer);
+            }
+            socketChannel.shutdownOutput();
         }
     }
 
@@ -55,35 +59,32 @@ public class Client {
         return requestBuilder.toString();
     }
 
-    public void receiveResponse(SocketChannel socketChannel) throws IOException {
-        ByteBuffer buffer = ByteBuffer.allocate(1024);
-        StringBuilder responseBuilder = new StringBuilder();
-        while (socketChannel.read(buffer) > 0) {
-            buffer.flip();
-            while (buffer.hasRemaining()) {
-                char c = (char) buffer.get();
-                responseBuilder.append(c);
-            }
-            buffer.clear();
-        }
+    public void receiveResponse() throws IOException {
+        try (SocketChannel socketChannel = SocketChannel.open()) {
+            socketChannel.connect(new InetSocketAddress(SERVER_ADDR, PORT));
 
-        String response = responseBuilder.toString();
-        try {
-            fileLock.lock(); // Захватываем мьютекс
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter("response.txt"))) {
-                writer.write("response:\n");
-                writer.write(response);
-            } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
-                fileLock.unlock(); // Освобождаем мьютекс
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        System.out.println(responseBuilder.toString());
+            ByteBuffer buffer = ByteBuffer.allocate(1024);
+            StringBuilder responseBuilder = new StringBuilder();
 
-        logger.info("Received response from server and saved it to 'response.txt'.");
+            System.out.println("Waiting for response. Thread " +  Thread.currentThread().getName());
+            System.out.println("socket contents " + socketChannel.read(buffer));
+
+            while (socketChannel.read(buffer) > 0) {
+                buffer.flip();
+                while (buffer.hasRemaining()) {
+                    char c = (char) buffer.get();
+                    responseBuilder.append(c);
+                }
+                buffer.clear();
+            }
+
+            System.out.println("A response was received from the server: " + responseBuilder.toString());
+
+            logger.info("Received response from server. " + Thread.currentThread().getName());
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, "Error occurred while receiving response from server", e);
+            throw e;
+        }
     }
 
 }
