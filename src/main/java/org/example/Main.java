@@ -1,33 +1,88 @@
 package org.example;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Main {
-    private static final int PORT = 9000;
-    private static final String SERVER_ADDR = "localhost";
-    private static final String REQUEST_FILE_PATH = "src/main/resources/HTTPRequest.txt";
+    public static final int PORT = 8080;
+    private static final Logger logger = LoggerFactory.getLogger(Main.class);
 
-    public static void main(String[] args) {
-        try {
-            Thread serverThread = new Thread(() -> {
-                try {
-                    HTTPServer httpServer = new HTTPServer(PORT, SERVER_ADDR);
-                    httpServer.startServer();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
+    private static class PersonHandler implements HttpHandler {
 
-            serverThread.start();
+        private static final Map<String, String> persons = new HashMap<>();
 
-            Thread.sleep(1000);
-            Client client = new Client(REQUEST_FILE_PATH);
-            client.startClient();
+        @Override
+        public HttpResponse handle(HttpRequest request) {
+            Supplier<IllegalArgumentException> nameError = () ->
+                    new IllegalArgumentException("Should specify name in the query\n");
 
-            serverThread.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            String query = Optional.ofNullable(request.getTarget().getQuery())
+                    .orElseThrow(nameError);
+
+            String name = Arrays.stream(query.split("&"))
+                    .filter(s -> s.startsWith("name="))
+                    .findAny()
+                    .orElseThrow(nameError)
+                    .substring("name=".length());
+
+            if (Methods.PUT.equals(request.getMethod())) {
+                String put = persons.put(name, request.getBody());
+                return HttpResponse.of(put == null ? Status.Created : Status.Ok, "");
+            }
+            if (Methods.GET.equals(request.getMethod())) {
+                String data = persons.get(name);
+                if (data == null)
+                    return HttpResponse.of(Status.NotFound, "");
+                return HttpResponse.of(Status.Ok, data);
+            }
+            throw new IllegalStateException("Unsupported HTTP method");
         }
     }
 
+    public static void main(String[] args) throws IOException, URISyntaxException {
+        Router router = new Router()
+                .addDefaultHandler(request -> {
+                    logger.error("404 Not Found: " + request.getTarget());
+                    return HttpResponse.of(Status.NotFound, "Not Found");
+                })
+                .addRoute(new URI("/"), EnumSet.of(Methods.GET), request -> {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Your fields are:\n");
+                    for (var entry : request.headers.entrySet()) {
+                        sb.append(entry.getKey()).append(":\t").append(entry.getValue()).append('\n');
+                    }
+                    return HttpResponse.of(Status.Ok, sb.toString());
+                })
+                .addRoute(new URI("/person"), EnumSet.of(Methods.GET, Methods.PUT), new PersonHandler());
+
+        try (HttpServer server = new HttpServer(PORT, router)) {
+            CompletableFuture.runAsync(() -> {
+                try {
+                    logger.info("Starting server on port " + PORT);
+                    server.start();
+                } catch (IOException e) {
+                    logger.error("Error while starting the server", e);
+                    throw new RuntimeException(e);
+                }
+            }).exceptionally(e -> {
+                logger.error("Error while server is running", e);
+                return null;
+            });
+
+            try (Scanner scanner = new Scanner(System.in)) {
+                String input;
+                do {
+                    input = scanner.next();
+                } while (!"stop".equals(input));
+            }
+
+            logger.info("Stopping server...");
+        }
+    }
 }
